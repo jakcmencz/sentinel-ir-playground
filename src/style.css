@@ -76,8 +76,11 @@ select, button, .file-btn {
 }
 
 select { max-width: 100%; min-width: 0; }
-label.grow { flex: 1 1 100%; min-width: 0; flex-wrap: nowrap; }
+/* WebKit sizes a select's scrollable overflow by the selected option's text, so
+   a long example title widens the page unless the row clips it. */
+label.grow { flex: 1 1 100%; min-width: 0; flex-wrap: nowrap; overflow: hidden; }
 label.grow select { flex: 1 1 auto; width: 100%; }
+label.grow select:focus-visible { outline-offset: -2px; }
 
 .file-btn { cursor: pointer; display: inline-flex; align-items: center; }
 .file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; }
