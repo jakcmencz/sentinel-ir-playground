@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Paste or open JavaScript, TypeScript or Python and see the risk, signals with line numbers and compact structural IR that sentinel-ir gives an AI agent. Runs locally in your browser.">
+<title>Sentinel-IR Playground</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Sentinel-IR Playground</h1>
+  <p class="tagline">See what an AI agent gets instead of your raw source: risk, signals with line numbers and compact structural IR.</p>
+  <p class="privacy">Runs in your browser via WebAssembly. Your code is not uploaded and is never executed.</p>
+</header>
+<main>
+  <section aria-label="Code">
+    <div class="row">
+      <label class="grow">Example <select id="example"><option value="">Choose an example</option></select></label>
+    </div>
+    <div class="row">
+      <label class="file-btn">Open file<input id="file" type="file" accept=".js,.mjs,.cjs,.jsx,.ts,.mts,.cts,.tsx,.py,.pyi"></label>
+      <label>Language
+        <select id="language">
+          <option value="auto">Auto</option>
+          <option value="javascript">JavaScript</option>
+          <option value="typescript">TypeScript</option>
+          <option value="tsx">TSX</option>
+          <option value="python">Python</option>
+        </select>
+      </label>
+    </div>
+    <textarea id="source" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Source code" placeholder="Paste JavaScript, TypeScript or Python here"></textarea>
+    <p id="file-name" class="muted" hidden></p>
+    <button id="analyze" type="button">Analyze</button>
+  </section>
+
+  <p id="error" class="warning" role="alert" hidden></p>
+
+  <section id="result" aria-live="polite" data-state="idle" hidden>
+    <div class="summary"><span id="risk" class="risk"></span><span id="meta" class="muted"></span></div>
+    <p id="incomplete" class="warning" hidden></p>
+    <h2>Signals</h2>
+    <ol id="signals"></ol>
+    <p id="no-signals" class="muted" hidden>No risk signals.</p>
+    <h2>Facts</h2>
+    <dl id="facts"></dl>
+    <h2>Size</h2>
+    <p id="size"></p>
+    <h2>Compact IR <button id="copy" type="button" class="small">Copy</button></h2>
+    <pre id="ir"></pre>
+  </section>
+</main>
+<footer>
+  <p>sentinel-ir {{SENTINEL_IR_VERSION}} ·
+    <a href="https://www.npmjs.com/package/sentinel-ir" rel="noopener">sentinel-ir on npm</a> ·
+    <a href="https://www.npmjs.com/package/sentinel-ir-mcp" rel="noopener">sentinel-ir-mcp</a> (the same analysis as MCP tools for Cursor, VS Code and Claude Code) ·
+    <a href="https://gitlab.com/jakubrojicek11/sentinel-ir-playground" rel="noopener">source</a> ·
+    <a href="licenses/playground-NOTICE.txt">licenses</a></p>
+  <p class="muted">Static analysis only. A low risk or an empty signal list is not proof that the code is safe.</p>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>
