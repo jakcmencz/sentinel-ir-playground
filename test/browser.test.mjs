@@ -90,6 +90,7 @@ test("expected verdicts for the examples", async () => {
     assert.deepEqual(verdict, {
         "python-pickle": "complete/critical",
         pytorch: "complete/critical",
+        "python-ctypes": "complete/critical",
         "js-eval": "complete/critical",
         "ts-shell": "complete/critical",
         "tsx-fetch": "complete/medium",
@@ -98,6 +99,9 @@ test("expected verdicts for the examples", async () => {
     });
     const torch = await nodeIr(EXAMPLES.find(e => e.id === "pytorch").source, { language: "python" });
     assert.deepEqual(torch.facts.riskSignals, ["unsafe_deserialization:torch.load@7"]);
+    const native = await nodeIr(EXAMPLES.find(e => e.id === "python-ctypes").source, { language: "python" });
+    assert.deepEqual(native.forbidden, ["native_code"]);
+    assert.deepEqual(native.facts.riskSignals, ["native_code:ctypes.CDLL@7", "native_code:ctypes.CDLL().system@8", "native_code:ctypes.pointer()[1000]@12"]);
 });
 
 test("pasted code without a file name is auto-detected", async () => {
