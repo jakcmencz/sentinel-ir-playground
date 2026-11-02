@@ -32,6 +32,24 @@ model = torch.load("model.pt", weights_only=False)
 `
     },
     {
+        id: "python-ctypes",
+        title: "Python: ctypes, native code",
+        fileName: "native.py",
+        source: `import ctypes
+
+# Only a C type and its size: not reported.
+size = ctypes.sizeof(ctypes.c_int)
+
+# Loads the C library and calls system() in it: critical.
+libc = ctypes.CDLL("libc.so.6")
+libc.system(b"id")
+
+# Writes far past the end of one int: critical.
+p = ctypes.pointer(ctypes.c_int(0))
+p[1000] = 5
+`
+    },
+    {
         id: "js-eval",
         title: "JavaScript: eval and recursive delete",
         fileName: "cleanup.js",
