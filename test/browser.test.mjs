@@ -92,6 +92,7 @@ test("expected verdicts for the examples", async () => {
         pytorch: "complete/critical",
         "python-ctypes": "complete/critical",
         "js-eval": "complete/critical",
+        "js-aliases": "complete/high",
         "ts-shell": "complete/critical",
         "tsx-fetch": "complete/medium",
         harmless: "complete/low",
@@ -102,6 +103,24 @@ test("expected verdicts for the examples", async () => {
     const native = await nodeIr(EXAMPLES.find(e => e.id === "python-ctypes").source, { language: "python" });
     assert.deepEqual(native.forbidden, ["native_code"]);
     assert.deepEqual(native.facts.riskSignals, ["native_code:ctypes.CDLL@7", "native_code:ctypes.CDLL().system@8", "native_code:ctypes.pointer()[1000]@12"]);
+    const aliases = await nodeIr(EXAMPLES.find(e => e.id === "js-aliases").source, { language: "javascript" });
+    assert.deepEqual(aliases.facts.riskSignals, [
+        "outbound_http:net.get@5",
+        "disk_write:files.writeFileSync@6",
+        "destructive_fs:drop@7",
+        "destructive_fs:require(\"fs-extra\").remove@9",
+        "outbound_http:require(\"axios\").post@10"
+    ]);
+    const broken = await nodeIr(EXAMPLES.find(e => e.id === "broken").source, { language: "javascript" });
+    assert.deepEqual(broken.facts.parseError, { line: 1, column: 17, kind: "missing", expected: ")" });
+});
+
+test("an incomplete result shows where parsing first failed", async () => {
+    await page.selectOption("#example", "");
+    await page.evaluate(() => { document.getElementById("result").dataset.state = "stale"; });
+    await page.selectOption("#example", "broken");
+    await shownIr();
+    assert.match(await page.textContent("#incomplete"), /First error at line 1, column 17: missing "\)"\./);
 });
 
 test("pasted code without a file name is auto-detected", async () => {

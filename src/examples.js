@@ -64,6 +64,22 @@ module.exports = { cleanup };
 `
     },
     {
+        id: "js-aliases",
+        title: "JavaScript: fs and HTTP under other names",
+        fileName: "tasks.js",
+        source: `const files = require("fs");
+const { unlinkSync: drop } = require("fs");
+const net = require("https");
+
+net.get("https://example.com/report");
+files.writeFileSync("out.txt", "done");
+drop("old.txt");
+
+require("fs-extra").remove("build");
+require("axios").post("https://example.com/upload", { ok: true });
+`
+    },
+    {
         id: "ts-shell",
         title: "TypeScript: Express route that runs a shell",
         fileName: "server.ts",
@@ -106,8 +122,9 @@ export function Profile({ id }: Props) {
         id: "broken",
         title: "Broken code (does not parse)",
         fileName: "broken.js",
-        source: `function run( {
-    require("child_process").exec(
+        source: `function run(cmd {
+    require("child_process").exec(cmd);
+}
 `
     }
 ];

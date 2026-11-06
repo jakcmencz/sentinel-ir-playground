@@ -58,6 +58,12 @@ function jumpToLine(line) {
     area.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
+function describeParseError(error) {
+    if (!error) return "";
+    const what = error.kind === "missing" ? `missing ${error.expected ? `"${error.expected}"` : "token"}` : "unexpected text";
+    return ` First error at line ${error.line}, column ${error.column}: ${what}.`;
+}
+
 function renderSignals(source, signals) {
     const list = $("signals");
     list.replaceChildren();
@@ -137,7 +143,7 @@ async function analyze() {
         const incomplete = compact.analysisStatus !== "complete";
         $("incomplete").hidden = !incomplete;
         $("incomplete").textContent = incomplete
-            ? `Incomplete analysis: ${compact.facts.reason || "the code did not parse"}. An incomplete result is not proof that the code is safe.`
+            ? `Incomplete analysis: ${compact.facts.reason || "the code did not parse"}.${describeParseError(compact.facts.parseError)} An incomplete result is not proof that the code is safe.`
             : "";
         renderSignals(source, full.facts.riskSignals || []);
         renderFacts(compact);
