@@ -123,6 +123,26 @@ test("an incomplete result shows where parsing first failed", async () => {
     assert.match(await page.textContent("#incomplete"), /First error at line 1, column 17: missing "\)"\./);
 });
 
+test("broken Python points at the bracket that is never closed", async () => {
+    const source = "def broken(x:\n    return x\n";
+    assert.deepEqual((await nodeIr(source, { language: "python" })).facts.parseError,
+        { line: 1, column: 11, kind: "unclosed", expected: ")" });
+    await page.evaluate(() => { document.getElementById("result").dataset.state = "stale"; });
+    await page.focus("#source");
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.evaluate(text => {
+        const area = document.getElementById("source");
+        const data = new DataTransfer();
+        data.setData("text/plain", text);
+        area.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true }));
+        area.value = text;
+    }, source);
+    await page.click("#analyze");
+    await shownIr();
+    assert.equal(await page.getAttribute("#result", "data-language"), "python");
+    assert.match(await page.textContent("#incomplete"), /First error at line 1, column 11: "\(" is never closed\./);
+});
+
 test("pasted code without a file name is auto-detected", async () => {
     const source = "import os\n\ndef run(cmd):\n    os.system(cmd)\n";
     await page.evaluate(() => { document.getElementById("result").dataset.state = "stale"; });

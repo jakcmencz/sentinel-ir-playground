@@ -15,7 +15,7 @@
     "test": "node scripts/build.mjs && node --test test/*.test.mjs"
   },
   "dependencies": {
-    "sentinel-ir": "0.4.4"
+    "sentinel-ir": "0.4.5"
   },
   "devDependencies": {
     "esbuild": "0.25.12",
