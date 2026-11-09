@@ -34,7 +34,7 @@ before(async () => {
         userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36"
     });
     page = await context.newPage();
-    page.on("request", r => requests.push(r.url()));
+    context.on("request", r => requests.push(r.url()));
     page.on("pageerror", e => problems.push(`pageerror: ${e.message}`));
     page.on("console", m => { if (m.type() === "error" || m.type() === "warning") problems.push(`console.${m.type()}: ${m.text()}`); });
     await page.addInitScript(() => {
@@ -183,6 +183,108 @@ test("tapping a signal selects its line in the editor", async () => {
     assert.equal(selected.trim(), "obj = pickle.loads(blob)");
 });
 
+// A big file with many statements: about 1.4 MB, several seconds to analyze.
+const BIG = "const fs = require('fs');\n" + Array.from({ length: 18000 }, (_, i) => `function f${i}(a) { if (a > ${i}) { return fs.readFileSync(a + ${i}); } return a; }`).join("\n") + "\n";
+
+async function markStale() {
+    await page.evaluate(() => { document.getElementById("result").dataset.state = "stale"; });
+}
+
+async function openFile(file) {
+    await markStale();
+    await page.setInputFiles("#file", file);
+}
+
+async function typeInto(selector, text) {
+    await page.focus(selector);
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type(text);
+}
+
+test("the page stays responsive while a large file is analyzed", async () => {
+    await openFile({ name: "big.js", mimeType: "text/javascript", buffer: Buffer.from(BIG) });
+    await page.waitForSelector("#result[data-state=running]");
+    const { longestGap, ticks } = await page.evaluate(async () => {
+        const result = document.getElementById("result");
+        let last = performance.now(), longestGap = 0, ticks = 0;
+        while (result.dataset.state !== "done") {
+            await new Promise(resolve => setTimeout(resolve, 20));
+            const now = performance.now();
+            longestGap = Math.max(longestGap, now - last);
+            last = now;
+            ticks++;
+        }
+        return { longestGap, ticks };
+    });
+    assert.ok(ticks > 10, `analysis finished too fast to measure (${ticks} ticks)`);
+    assert.ok(longestGap < 500, `the page froze for ${Math.round(longestGap)} ms`);
+    assert.deepEqual(await shownIr(), await nodeIr(BIG, { language: "javascript", target: "big.js" }));
+});
+
+test("a newer analysis replaces one that is still running", async () => {
+    await openFile({ name: "big.js", mimeType: "text/javascript", buffer: Buffer.from(BIG) });
+    await page.waitForSelector("#result[data-state=running]");
+    await page.selectOption("#example", "python-pickle");
+    await page.waitForSelector("#result[data-state=running]");
+    const shown = await shownIr();
+    const example = EXAMPLES.find(e => e.id === "python-pickle");
+    assert.deepEqual(shown, await nodeIr(example.source, { language: "python", target: example.fileName }));
+    await page.waitForTimeout(300);
+    assert.equal(await page.getAttribute("#result", "data-state"), "done");
+    assert.equal(await page.isEnabled("#analyze"), true);
+    assert.equal(await page.textContent("#analyze"), "Analyze");
+});
+
+test("the IR block scrolls with the keyboard and has a name", async () => {
+    const imports = Array.from({ length: 300 }, (_, i) => `import m${i} from "module-${i}";`).join("\n") + "\n";
+    await openFile({ name: "many.js", mimeType: "text/javascript", buffer: Buffer.from(imports) });
+    await shownIr();
+    assert.equal(await page.getAttribute("#ir", "tabindex"), "0");
+    assert.equal(await page.getAttribute("#ir", "aria-label"), "Compact IR");
+    await page.focus("#ir");
+    await page.keyboard.press("PageDown");
+    await page.waitForTimeout(300);
+    const box = await page.evaluate(() => { const ir = document.getElementById("ir"); return { top: ir.scrollTop, height: ir.scrollHeight, client: ir.clientHeight }; });
+    assert.ok(box.height > box.client, `the IR does not overflow: ${JSON.stringify(box)}`);
+    assert.ok(box.top > 0, `End did not scroll the IR: ${JSON.stringify(box)}`);
+});
+
+test("a file over 2 MB is refused and the previous result is hidden", async () => {
+    await openFile({ name: "small.py", mimeType: "text/x-python", buffer: Buffer.from("import os\nos.system('x')\n") });
+    await shownIr();
+    await openFile({ name: "huge.js", mimeType: "text/javascript", buffer: Buffer.alloc(2 * 1024 * 1024 + 1, 0x20) });
+    await page.waitForSelector("#error:not([hidden])");
+    assert.match(await page.textContent("#error"), /huge\.js is larger than 2 MB, so it was not opened/);
+    assert.equal(await page.isVisible("#result"), false);
+    assert.equal(await page.inputValue("#source"), "import os\nos.system('x')\n");
+    await markStale();
+    await page.click("#analyze");
+    await shownIr();
+    assert.equal(await page.isVisible("#error"), false);
+    assert.match(await page.textContent("#meta"), /Python \(from file name\)/);
+});
+
+test("typing over an opened file forgets its name; a small edit keeps it", async () => {
+    await openFile({ name: "tool.py", mimeType: "text/x-python", buffer: Buffer.from("import os\nos.system('x')\n") });
+    await shownIr();
+    await page.focus("#source");
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.type("# edited\n");
+    await markStale();
+    await page.click("#analyze");
+    await shownIr();
+    assert.match(await page.textContent("#meta"), /Python \(from file name\)/);
+
+    const js = "const cp = require('child_process');\ncp.exec('ls');\n";
+    await typeInto("#source", js);
+    await markStale();
+    await page.click("#analyze");
+    const shown = await shownIr();
+    assert.match(await page.textContent("#meta"), /JavaScript \(auto-detected\)/);
+    assert.equal(await page.isVisible("#file-name"), false);
+    assert.deepEqual(shown, await nodeIr(js, { language: "javascript" }));
+});
+
 test("fits a phone screen without horizontal scrolling", async () => {
     const { scroll, client } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
     assert.ok(scroll <= client, `scrollWidth ${scroll} > clientWidth ${client}`);
@@ -192,7 +294,7 @@ test("only the site's own files are requested and nothing is reported", async ()
     const foreign = requests.filter(url => !url.startsWith(origin + BASE));
     assert.deepEqual(foreign, []);
     const paths = new Set(requests.map(url => new URL(url).pathname.slice(BASE.length)));
-    for (const file of ["", "style.css", "app.js", "tree-sitter.wasm", "wasm/tree-sitter-python.wasm", "wasm/tree-sitter-javascript.wasm", "wasm/tree-sitter-typescript.wasm", "wasm/tree-sitter-tsx.wasm"]) {
+    for (const file of ["", "style.css", "app.js", "worker.js", "tree-sitter.wasm", "wasm/tree-sitter-python.wasm", "wasm/tree-sitter-javascript.wasm", "wasm/tree-sitter-typescript.wasm", "wasm/tree-sitter-tsx.wasm"]) {
         assert.ok(paths.has(file), `expected a request for ${file || "index"}`);
     }
     assert.deepEqual(problems, []);

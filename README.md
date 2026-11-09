@@ -14,8 +14,12 @@ The analysis runs in the browser through WebAssembly (tree-sitter grammars bundl
 static: no server-side code, no AI model, no API keys, no analytics. Your code is not uploaded and is never executed;
 sentinel-ir only parses it.
 
-What the tests check: in headless Chromium the page requests only its own files, and its Content-Security-Policy
-(`connect-src 'self'`) blocks connections to any other origin. Links in the footer are ordinary navigation.
+The analysis runs in a Web Worker, so the page stays responsive even on a 2 MB file. The page's
+Content-Security-Policy (`connect-src 'self'`) blocks connections to any other origin. GitLab Pages cannot send CSP
+headers and a worker does not inherit the page's `<meta>` policy, so the worker itself refuses requests to other
+origins and has no `XMLHttpRequest`, `WebSocket` or `importScripts`. Links in the footer are ordinary navigation.
+
+What the tests check: in headless Chromium the page and its worker request only the site's own files.
 
 ## Limits
 
@@ -23,8 +27,8 @@ What the tests check: in headless Chromium the page requests only its own files,
 - An `incomplete` result means the code did not fully parse; it is not proof of safety either. The page shows the
   line and column where parsing first failed, which can be a few characters before the real mistake.
 - For very small snippets the compact IR is larger than the code; it pays off on larger files.
-- Language auto-detection for pasted code is a heuristic. A file's extension always wins, and you can pick the
-  language yourself.
+- Language auto-detection for pasted code is a heuristic. A file's extension always wins until you replace the
+  file's code, and you can pick the language yourself.
 - CI runs the full checks in Chromium with a phone viewport, and the no-horizontal-scroll check for every
   example at 320–412 px in Chromium, Firefox and WebKit (Safari's engine). Real Mobile Safari (iOS 27 simulator)
   and desktop Safari (macOS 26) were checked by hand, not in CI.
@@ -50,6 +54,10 @@ The browser tests use `playwright-core` with Chromium, Firefox and WebKit. Insta
 - every example gives exactly the same compact IR and signals as `sentinel-ir` under Node;
 - pasted code is auto-detected and an opened file uses its extension;
 - tapping a signal selects its line;
+- the page keeps responding while a 1.4 MB file is analyzed, and a newer analysis replaces a running one;
+- a file over 2 MB is refused without leaving the previous result on screen;
+- typing over an opened file stops using its extension;
+- the IR block scrolls with the keyboard;
 - the page fits a 393 px wide screen, and every example fits 320–412 px in Chromium, Firefox and WebKit;
 - no request leaves the site's origin and there are no console errors or CSP violations.
 
