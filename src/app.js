@@ -3,6 +3,7 @@
 const ir = require("sentinel-ir");
 const { detectLanguage, languageFromFileName } = require("./detect");
 const { EXAMPLES } = require("./examples");
+const { describeParseError } = require("./parse-error");
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const LABELS = { javascript: "JavaScript", typescript: "TypeScript", tsx: "TSX", python: "Python" };
@@ -56,12 +57,6 @@ function jumpToLine(line) {
     const lineHeight = parseFloat(getComputedStyle(area).lineHeight) || 20;
     area.scrollTop = Math.max(0, (line - 3) * lineHeight);
     area.scrollIntoView({ block: "center", behavior: "smooth" });
-}
-
-function describeParseError(error) {
-    if (!error) return "";
-    const what = error.kind === "missing" ? `missing ${error.expected ? `"${error.expected}"` : "token"}` : "unexpected text";
-    return ` First error at line ${error.line}, column ${error.column}: ${what}.`;
 }
 
 function renderSignals(source, signals) {
