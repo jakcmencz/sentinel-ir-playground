@@ -1,6 +1,5 @@
 "use strict";
 
-const ir = require("sentinel-ir");
 const { detectLanguage, languageFromFileName } = require("./detect");
 const { EXAMPLES } = require("./examples");
 const { describeParseError } = require("./parse-error");
@@ -23,13 +22,65 @@ const SIGNALS = {
 };
 
 const $ = id => document.getElementById(id);
-const state = { fileName: null };
+const state = { fileName: null, run: 0 };
+const worker = { current: null, pending: null, nextId: 0 };
+const SUPERSEDED = new Error("superseded by a newer analysis");
 
 function el(tag, text, className) {
     const node = document.createElement(tag);
     if (text !== undefined) node.textContent = text;
     if (className) node.className = className;
     return node;
+}
+
+function startWorker() {
+    const w = new Worker("worker.js");
+    w.onmessage = ({ data }) => {
+        const pending = worker.pending;
+        if (!pending || pending.id !== data.id) return;
+        worker.pending = null;
+        if (data.error) pending.reject(new Error(data.error));
+        else pending.resolve(data);
+    };
+    w.onerror = event => {
+        event.preventDefault();
+        const pending = worker.pending;
+        worker.pending = null;
+        w.terminate();
+        if (worker.current === w) worker.current = null;
+        if (pending) pending.reject(new Error(event.message || "the analyzer stopped"));
+    };
+    worker.current = w;
+}
+
+// sentinel-ir runs in a worker so a large file never freezes the page. A newer
+// request stops the running one: terminating the worker is the only way to
+// cancel an analysis that is already under way.
+function cancelAnalysis() {
+    if (!worker.pending) return;
+    worker.current.terminate();
+    worker.current = null;
+    worker.pending.reject(SUPERSEDED);
+    worker.pending = null;
+}
+
+function analyzeInWorker(source, options) {
+    cancelAnalysis();
+    if (!worker.current) startWorker();
+    const id = ++worker.nextId;
+    return new Promise((resolve, reject) => {
+        worker.pending = { id, resolve, reject };
+        worker.current.postMessage({ id, source, options });
+    });
+}
+
+function forgetFileIfReplacingAll() {
+    const area = $("source");
+    const replacesAll = area.value === "" || (area.selectionStart === 0 && area.selectionEnd === area.value.length);
+    if (replacesAll) {
+        setFileName(null);
+        $("example").value = "";
+    }
 }
 
 function chooseLanguage(source) {
@@ -120,6 +171,7 @@ async function analyze() {
     const { language, how } = chooseLanguage(source);
     const options = { language };
     if (state.fileName) options.target = state.fileName;
+    const ticket = ++state.run;
 
     $("error").hidden = true;
     result.dataset.state = "running";
@@ -127,8 +179,8 @@ async function analyze() {
     button.textContent = "Analyzing…";
     const started = performance.now();
     try {
-        const full = await ir.analyzeAsync(source, options);
-        const compact = ir.compress(full);
+        const { full, compact } = await analyzeInWorker(source, options);
+        if (ticket !== state.run) return;
         const ms = Math.round(performance.now() - started);
         const risk = compact.world.risk;
         $("risk").textContent = risk;
@@ -149,12 +201,15 @@ async function analyze() {
         result.dataset.language = language;
         result.dataset.state = "done";
     } catch (error) {
+        if (ticket !== state.run) return;
         result.dataset.state = "error";
         $("error").hidden = false;
         $("error").textContent = `Analysis failed: ${error && error.message ? error.message : error}`;
     } finally {
-        button.disabled = false;
-        button.textContent = "Analyze";
+        if (ticket === state.run) {
+            button.disabled = false;
+            button.textContent = "Analyze";
+        }
     }
 }
 
@@ -169,9 +224,17 @@ function loadExample(id) {
 
 async function loadFile(file) {
     if (!file) return;
+    // Lets the same file be picked again; "change" does not fire otherwise.
+    $("file").value = "";
     if (file.size > MAX_FILE_BYTES) {
+        state.run++;
+        cancelAnalysis();
+        $("analyze").disabled = false;
+        $("analyze").textContent = "Analyze";
+        $("result").hidden = true;
+        $("result").dataset.state = "idle";
         $("error").hidden = false;
-        $("error").textContent = `${file.name} is larger than 2 MB. Pick a single source file.`;
+        $("error").textContent = `${file.name} is larger than 2 MB, so it was not opened. Pick a single source file.`;
         return;
     }
     $("source").value = await file.text();
@@ -210,14 +273,10 @@ function init() {
     $("analyze").addEventListener("click", analyze);
     $("copy").addEventListener("click", copyIr);
     $("language").addEventListener("change", analyze);
-    $("source").addEventListener("paste", () => {
-        const area = $("source");
-        const replacesAll = area.value === "" || (area.selectionStart === 0 && area.selectionEnd === area.value.length);
-        if (replacesAll) {
-            setFileName(null);
-            $("example").value = "";
-        }
-    });
+    // New code typed, pasted or dropped over everything is no longer the opened
+    // file or example, so its name must not pick the language any more.
+    $("source").addEventListener("paste", forgetFileIfReplacingAll);
+    $("source").addEventListener("beforeinput", forgetFileIfReplacingAll);
     $("source").addEventListener("keydown", e => {
         if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) analyze();
     });

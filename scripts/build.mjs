@@ -18,9 +18,9 @@ await rm(out, { recursive: true, force: true });
 await mkdir(path.join(out, "wasm"), { recursive: true });
 await mkdir(path.join(out, "licenses"), { recursive: true });
 
-await build({
-    entryPoints: [path.join(root, "src", "app.js")],
-    outfile: path.join(out, "app.js"),
+for (const entry of ["app.js", "worker.js"]) await build({
+    entryPoints: [path.join(root, "src", entry)],
+    outfile: path.join(out, entry),
     bundle: true,
     minify: true,
     platform: "browser",

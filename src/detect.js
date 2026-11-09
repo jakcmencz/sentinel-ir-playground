@@ -2,38 +2,53 @@
 
 // Best-effort guess for pasted code without a file name. The user can always
 // override it, and a file's extension always wins over this guess.
+//
+// Pasted text is untrusted: every pattern is written so that the regex engine
+// never has two ways to match the same run of characters (no "\s*(...)?\s*" or
+// "\s+.*\s+"). Such patterns take seconds to minutes on one long line.
 const PYTHON_LINE = [
-    /^\s*(async\s+)?def\s+\w+\s*\(.*\)\s*(->\s*[^:]+)?:\s*(#.*)?$/,
-    // Also an unfinished or broken def header; no JavaScript line starts this way.
-    /^\s*(async\s+)?def\s+\w+\s*\(/,
-    /^\s*class\s+\w+\s*(\([^)]*\))?\s*:\s*(#.*)?$/,
-    /^\s*from\s+[\w.]+\s+import\s+[\w*, ()]+$/,
-    /^\s*import\s+[\w.]+(\s+as\s+\w+)?(\s*,\s*[\w.]+(\s+as\s+\w+)?)*\s*(#.*)?$/,
-    /^\s*(if|elif|else|for|while|with|try|except|finally)\b.*:\s*(#.*)?$/,
-    /^\s*@[\w.]+(\(.*\))?\s*$/,
-    /^\s*#/
+    // A def header, finished or not; no JavaScript line starts this way.
+    /^\s*(?:async\s+)?def\s+\w+\s*\(/,
+    /^\s*class\s+\w+\s*(?:\([^)]*\)\s*)?:\s*(?:#.*)?$/,
+    /^\s*from\s+[\w.]+\s+import\s[\w*, ()]*(?:#.*)?$/,
+    /^\s*import\s+[\w.]+(?:\s+as\s+\w+)?(?:\s*,\s*[\w.]+(?:\s+as\s+\w+)?)*\s*(?:#.*)?$/,
+    /^\s*(?:if|elif|else|for|while|with|try|except|finally)\b.*:\s*(?:#.*)?$/,
+    /^\s*@[\w.]+(?:\(.*\))?\s*$/,
+    /^\s*#/,
+    /^\s*[rRbBuUfF]?(?:"""|''')/,
+    /^\s*(?:pass|raise|elif|except|lambda|nonlocal|global|del)\b/,
+    /^(?!.*;\s*$).*?(?<![\w.$])(?:True|False|None)\b/
 ];
 
 const JS_LINE = [
     /[;{}]\s*$/,
-    /^\s*(const|let|var|function|export|async\s+function)\b/,
+    /^\s*(?:const|let|var|function|export|async\s+function)\b/,
     /=>/,
     /\brequire\s*\(/,
-    /^\s*import\s+.*\s+from\s+["']/,
+    /^\s*import\s.*\sfrom\s*["']/,
     /^\s*import\s+["']/,
     /^\s*\/\//
 ];
 
 const TS_HINTS = [
-    /\b(interface|type)\s+\w+(\s*<[^>]*>)?\s*[={]/,
+    /\b(?:interface|type)\s+\w+\s*(?:<[^>\n]*>\s*)?[={]/,
     /\benum\s+\w+\s*\{/,
-    /[\w)\]]\s*:\s*(string|number|boolean|any|unknown|void|never|Record<|Promise<|Array<)/,
-    /\bas\s+(string|number|boolean|any|unknown|const)\b/,
-    /\b(implements|readonly|private|public|protected)\s+\w/,
-    /^\s*import\s+type\s/m
+    /[\w)\]]\s*:\s*(?:string|number|boolean|any|unknown|void|never|Record<|Promise<|Array<)/,
+    /\bas\s+(?:string|number|boolean|any|unknown|const)\b/,
+    /\b(?:implements|readonly|private|public|protected)\s+\w/,
+    /^[ \t]*import\s+type\s/m,
+    /^[ \t]*(?:export\s+)?declare\s+(?:const|let|var|function|class|abstract|module|namespace|global|enum|type|interface)\b/m,
+    /^[ \t]*export\s+(?:type|interface)\s/m,
+    /^[ \t]*(?:import|export)\s*\{[^}\n]*\btype\s+\w/m,
+    // Annotated parameter or variable: function f(a: T, ...), (e: Type) => ..., const v: [string][] = ...
+    /\bfunction\s*\w*\s*\(\s*\w+\??\s*:\s*\w/,
+    /\(\s*\w+\??\s*:\s*[\w.]+\s*\)\s*=>/,
+    /^[ \t]*(?:export\s+)?(?:const|let|var)\s+\w+\s*:\s*[\w[{(]/m,
+    // Non-null assertion (x!.y): not valid JavaScript.
+    /[\w)\]]!\./
 ];
 
-const JSX_HINT = /<\/[A-Za-z][\w.]*>|<[A-Za-z][\w.]*(\s+[^<>]*)?\/>|(return|=>)\s*\(?\s*<[A-Za-z]/;
+const JSX_HINT = /<\/[A-Za-z][\w.]*>|<[A-Za-z][\w.]*(?:\s[^<>]*)?\/>|(?:return|=>)\s*(?:\(\s*)?<[A-Za-z]/;
 
 function countLines(lines, patterns) {
     let count = 0;
