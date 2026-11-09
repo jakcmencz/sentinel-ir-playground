@@ -17,6 +17,8 @@ test("detectLanguage: typical snippets", () => {
     const cases = [
         ["import os\nos.system('ls')\n", "python"],
         ["def f(x):\n    return eval(x)\n", "python"],
+        ["def broken(x:\n    return x\n", "python"],
+        ["async def f(a,\n    b):\n    pass\n", "python"],
         ["from flask import Flask\napp = Flask(__name__)\n", "python"],
         ["const cp = require('child_process');\ncp.exec('ls');\n", "javascript"],
         ["import fs from 'fs';\nfs.rmSync('/x');\n", "javascript"],

@@ -3,6 +3,7 @@
 const ir = require("sentinel-ir");
 const { detectLanguage, languageFromFileName } = require("./detect");
 const { EXAMPLES } = require("./examples");
+const { describeParseError } = require("./parse-error");
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const LABELS = { javascript: "JavaScript", typescript: "TypeScript", tsx: "TSX", python: "Python" };
@@ -137,7 +138,7 @@ async function analyze() {
         const incomplete = compact.analysisStatus !== "complete";
         $("incomplete").hidden = !incomplete;
         $("incomplete").textContent = incomplete
-            ? `Incomplete analysis: ${compact.facts.reason || "the code did not parse"}. An incomplete result is not proof that the code is safe.`
+            ? `Incomplete analysis: ${compact.facts.reason || "the code did not parse"}.${describeParseError(compact.facts.parseError)} An incomplete result is not proof that the code is safe.`
             : "";
         renderSignals(source, full.facts.riskSignals || []);
         renderFacts(compact);

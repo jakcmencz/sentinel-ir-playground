@@ -4,6 +4,8 @@
 // override it, and a file's extension always wins over this guess.
 const PYTHON_LINE = [
     /^\s*(async\s+)?def\s+\w+\s*\(.*\)\s*(->\s*[^:]+)?:\s*(#.*)?$/,
+    // Also an unfinished or broken def header; no JavaScript line starts this way.
+    /^\s*(async\s+)?def\s+\w+\s*\(/,
     /^\s*class\s+\w+\s*(\([^)]*\))?\s*:\s*(#.*)?$/,
     /^\s*from\s+[\w.]+\s+import\s+[\w*, ()]+$/,
     /^\s*import\s+[\w.]+(\s+as\s+\w+)?(\s*,\s*[\w.]+(\s+as\s+\w+)?)*\s*(#.*)?$/,

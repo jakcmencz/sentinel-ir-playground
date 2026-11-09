@@ -20,7 +20,8 @@ What the tests check: in headless Chromium the page requests only its own files,
 ## Limits
 
 - Static analysis only. A `low` risk or an empty signal list is not proof that code is safe.
-- An `incomplete` result means the code did not fully parse; it is not proof of safety either.
+- An `incomplete` result means the code did not fully parse; it is not proof of safety either. The page shows the
+  line and column where parsing first failed, which can be a few characters before the real mistake.
 - For very small snippets the compact IR is larger than the code; it pays off on larger files.
 - Language auto-detection for pasted code is a heuristic. A file's extension always wins, and you can pick the
   language yourself.
