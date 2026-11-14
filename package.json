@@ -2,7 +2,7 @@
   "name": "sentinel-ir-playground",
   "version": "0.1.0",
   "private": true,
-  "description": "Try sentinel-ir in the browser: risk, signals and compact structural IR for JavaScript, TypeScript and Python, computed locally via WebAssembly",
+  "description": "Try sentinel-ir in the browser: risk, signals and compact structural IR for JavaScript, TypeScript, Python and Rust, computed locally via WebAssembly",
   "license": "Apache-2.0",
   "author": "Jakub Rojicek",
   "repository": {
@@ -15,7 +15,7 @@
     "test": "node scripts/build.mjs && node --test test/*.test.mjs"
   },
   "dependencies": {
-    "sentinel-ir": "0.4.5"
+    "sentinel-ir": "0.5.6"
   },
   "devDependencies": {
     "esbuild": "0.25.12",

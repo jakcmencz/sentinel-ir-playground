@@ -95,6 +95,9 @@ test("expected verdicts for the examples", async () => {
         "js-aliases": "complete/high",
         "ts-shell": "complete/critical",
         "tsx-fetch": "complete/medium",
+        "rust-command": "complete/critical",
+        "rust-ffi": "complete/critical",
+        "rust-build": "complete/high",
         harmless: "complete/low",
         broken: "incomplete/critical"
     });
@@ -111,6 +114,12 @@ test("expected verdicts for the examples", async () => {
         "destructive_fs:require(\"fs-extra\").remove@9",
         "outbound_http:require(\"axios\").post@10"
     ]);
+    const command = await nodeIr(EXAMPLES.find(e => e.id === "rust-command").source, { language: "rust" });
+    assert.deepEqual(command.forbidden, ["child_process", "process_spawn", "destructive_fs"]);
+    const ffi = await nodeIr(EXAMPLES.find(e => e.id === "rust-ffi").source, { language: "rust" });
+    assert.deepEqual(ffi.facts.riskSignals, ["native_code:extern \"C\" {}@3", "native_code:unsafe {}@10"]);
+    const build = await nodeIr(EXAMPLES.find(e => e.id === "rust-build").source, { language: "rust", target: "build.rs" });
+    assert.deepEqual(build.facts.riskSignals, ["build_script:build.rs runs on the build machine at compile time@1", "disk_write:std::fs::write@4"]);
     const broken = await nodeIr(EXAMPLES.find(e => e.id === "broken").source, { language: "javascript" });
     assert.deepEqual(broken.facts.parseError, { line: 1, column: 17, kind: "missing", expected: ")" });
 });
@@ -172,6 +181,41 @@ test("an opened file is analyzed by its extension", async () => {
     assert.equal(shown.world.risk, "critical");
 });
 
+test("pasted Rust without a file name is auto-detected", async () => {
+    const source = "use std::process::Command;\n\nfn run(cmd: &str) {\n    Command::new(cmd).status().unwrap();\n}\n";
+    await page.evaluate(() => { document.getElementById("result").dataset.state = "stale"; });
+    await page.focus("#source");
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.evaluate(text => {
+        const area = document.getElementById("source");
+        const data = new DataTransfer();
+        data.setData("text/plain", text);
+        area.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true }));
+        area.value = text;
+    }, source);
+    await page.click("#analyze");
+    const shown = await shownIr();
+    assert.equal(await page.getAttribute("#result", "data-language"), "rust");
+    assert.match(await page.textContent("#meta"), /Rust \(auto-detected\)/);
+    assert.deepEqual(shown, await nodeIr(source, { language: "rust" }));
+    assert.equal(shown.world.risk, "critical");
+});
+
+test("an opened .rs file is analyzed as Rust, broken or not", async () => {
+    for (const [source, status, risk] of [
+        ["fn main() {\n    unsafe { libc::system(c) };\n}\n", "complete", "critical"],
+        ["fn run(cmd: &str {\n    std::process::Command::new(cmd).status();\n}\n", "incomplete", "critical"]
+    ]) {
+        await page.evaluate(() => { document.getElementById("result").dataset.state = "stale"; });
+        await page.setInputFiles("#file", { name: "lib.rs", mimeType: "text/plain", buffer: Buffer.from(source) });
+        const shown = await shownIr();
+        assert.match(await page.textContent("#meta"), /Rust \(from file name\)/);
+        assert.deepEqual(shown, await nodeIr(source, { language: "rust", target: "lib.rs" }));
+        assert.equal(`${shown.analysisStatus}/${shown.world.risk}`, `${status}/${risk}`);
+        assert.equal(await page.isVisible("#incomplete"), status !== "complete");
+    }
+});
+
 test("tapping a signal selects its line in the editor", async () => {
     await page.selectOption("#example", "python-pickle");
     await shownIr();
@@ -181,6 +225,17 @@ test("tapping a signal selects its line in the editor", async () => {
         return a.value.slice(a.selectionStart, a.selectionEnd);
     });
     assert.equal(selected.trim(), "obj = pickle.loads(blob)");
+});
+
+test("tapping a Rust import signal selects its use line", async () => {
+    await page.selectOption("#example", "rust-command");
+    await shownIr();
+    await page.tap('#signals li[data-signal="child_process_import"]');
+    const selected = await page.evaluate(() => {
+        const a = document.getElementById("source");
+        return a.value.slice(a.selectionStart, a.selectionEnd);
+    });
+    assert.equal(selected.trim(), "use std::process::Command;");
 });
 
 // A big file with many statements: about 1.4 MB, several seconds to analyze.

@@ -50,7 +50,7 @@ for (const file of ["index.html", "style.css"]) {
     await cp(path.join(root, "src", file), path.join(out, file));
 }
 await cp(path.join(wtsDir, "tree-sitter.wasm"), path.join(out, "tree-sitter.wasm"));
-for (const file of ["tree-sitter-javascript.wasm", "tree-sitter-typescript.wasm", "tree-sitter-tsx.wasm", "tree-sitter-python.wasm"]) {
+for (const file of ["tree-sitter-javascript.wasm", "tree-sitter-typescript.wasm", "tree-sitter-tsx.wasm", "tree-sitter-python.wasm", "tree-sitter-rust.wasm"]) {
     await cp(path.join(irDir, "wasm", file), path.join(out, "wasm", file));
 }
 const licenses = {
@@ -58,6 +58,7 @@ const licenses = {
     "sentinel-ir-NOTICE.txt": path.join(irDir, "NOTICE"),
     "tree-sitter-typescript-LICENSE.txt": path.join(irDir, "wasm", "LICENSE-tree-sitter-typescript"),
     "tree-sitter-python-LICENSE.txt": path.join(irDir, "wasm", "LICENSE-tree-sitter-python"),
+    "tree-sitter-rust-LICENSE.txt": path.join(irDir, "wasm", "LICENSE-tree-sitter-rust"),
     "web-tree-sitter-LICENSE.txt": path.join(wtsDir, "LICENSE"),
     "playground-LICENSE.txt": path.join(root, "LICENSE"),
     "playground-NOTICE.txt": path.join(root, "NOTICE")
