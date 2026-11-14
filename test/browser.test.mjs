@@ -216,6 +216,20 @@ test("an opened .rs file is analyzed as Rust, broken or not", async () => {
     }
 });
 
+test("on a phone every text field is at least 16 px, so iOS does not zoom in on focus", async () => {
+    // A fresh phone context: Chromium's touch emulation stops matching (pointer: coarse) after file uploads.
+    const phone = await browser.newContext({ viewport: { width: 393, height: 851 }, isMobile: true, hasTouch: true });
+    try {
+        const p = await phone.newPage();
+        await p.goto(origin + BASE);
+        await p.waitForSelector("#result[data-state=done]");
+        const sizes = await p.$$eval("textarea, select, input:not([type=file])", els => els.map(e => `${e.id || e.tagName}:${parseFloat(getComputedStyle(e).fontSize)}`));
+        assert.deepEqual(sizes.filter(s => Number(s.split(":")[1]) < 16), []);
+    } finally {
+        await phone.close();
+    }
+});
+
 test("tapping a signal selects its line in the editor", async () => {
     await page.selectOption("#example", "python-pickle");
     await shownIr();
