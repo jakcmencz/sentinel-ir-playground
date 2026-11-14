@@ -26,7 +26,7 @@ const PYTHON_LINE = [
 // at least as many as JavaScript has JavaScript-only lines.
 const RUST_LINE = [
     /^\s*(?:pub(?:\([\w ]+\))?\s+)?(?:(?:const|async|unsafe)\s+)*(?:extern\s+"\w+"\s+)?fn\s+\w+/,
-    /^\s*(?:pub(?:\([\w ]+\))?\s+)?use\s+[\w:{}, *]+;/,
+    /^\s*(?:pub(?:\([\w ]+\))?\s+)?use\s+[\w{:][\w:{}, *]*;/,
     /^\s*#!?\[\w/,
     /^\s*(?:pub(?:\([\w ]+\))?\s+)?(?:struct|trait|mod)\s+\w+/,
     /^\s*pub(?:\([\w ]+\))?\s+(?:enum|type|const|static)\s+\w+/,

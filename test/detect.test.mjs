@@ -74,7 +74,7 @@ test("languageFromFileName: extensions sentinel-ir supports", () => {
 
 test("detectLanguage stays fast on hostile pasted text", () => {
     // Each of these took from seconds to minutes with the earlier patterns.
-    const prefixes = ["", "import", "import a", "from a", "from a import", "class A", "def f(", "if", "@a(", "type A<", "import {", "<a", "return", "const a", "(a", "True", "fn a", "pub fn a", "pub(crate) ", "use a", "#[", "impl", "match a", "extern ", "std::", "let mut", "println!"];
+    const prefixes = ["", "import", "import a", "from a", "from a import", "class A", "def f(", "if", "@a(", "type A<", "import {", "<a", "return", "const a", "(a", "True", "fn a", "pub fn a", "pub(crate) ", "use", "pub use", "use a", "unsafe", "extern \"C\"", "#![", "#[", "impl", "match a", "extern ", "std::", "let mut", "println!"];
     const pumps = [" ", "\t", "\n", " \n", " a", ", a", " as a", "(", ")", "<", ":", ";", "True ", "None;", "type A<\n", "import {\n", "<a ", "a!", "::", "pub ", "unsafe ", "const ", "{", "a::{", "\"C\" "];
     let worst = { ms: 0 };
     for (const prefix of prefixes) {
