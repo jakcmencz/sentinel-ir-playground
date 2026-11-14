@@ -1,7 +1,7 @@
 # Sentinel-IR Playground
 
 Try [sentinel-ir](https://www.npmjs.com/package/sentinel-ir) in a browser, including on a phone. Paste code or open a
-JavaScript, TypeScript, TSX or Python file and see what an AI agent would get instead of the raw source:
+JavaScript, TypeScript, TSX, Python or Rust file and see what an AI agent would get instead of the raw source:
 
 - the risk level (`low`, `medium`, `high`, `critical`);
 - risk signals with line numbers (tap one to jump to the line);

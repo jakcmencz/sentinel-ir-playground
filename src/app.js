@@ -5,7 +5,7 @@ const { EXAMPLES } = require("./examples");
 const { describeParseError } = require("./parse-error");
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
-const LABELS = { javascript: "JavaScript", typescript: "TypeScript", tsx: "TSX", python: "Python" };
+const LABELS = { javascript: "JavaScript", typescript: "TypeScript", tsx: "TSX", python: "Python", rust: "Rust" };
 const SIGNALS = {
     unsafe_deserialization: "Deserializes data in a way that can run code",
     process_spawn: "Starts a process",
