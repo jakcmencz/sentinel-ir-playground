@@ -227,6 +227,17 @@ test("tapping a signal selects its line in the editor", async () => {
     assert.equal(selected.trim(), "obj = pickle.loads(blob)");
 });
 
+test("tapping a Rust import signal selects its use line", async () => {
+    await page.selectOption("#example", "rust-command");
+    await shownIr();
+    await page.tap('#signals li[data-signal="child_process_import"]');
+    const selected = await page.evaluate(() => {
+        const a = document.getElementById("source");
+        return a.value.slice(a.selectionStart, a.selectionEnd);
+    });
+    assert.equal(selected.trim(), "use std::process::Command;");
+});
+
 // A big file with many statements: about 1.4 MB, several seconds to analyze.
 const BIG = "const fs = require('fs');\n" + Array.from({ length: 18000 }, (_, i) => `function f${i}(a) { if (a > ${i}) { return fs.readFileSync(a + ${i}); } return a; }`).join("\n") + "\n";
 
