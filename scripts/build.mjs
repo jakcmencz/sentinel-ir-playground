@@ -27,13 +27,9 @@ for (const entry of ["app.js", "worker.js"]) await build({
     format: "iife",
     target: ["es2020"],
     logLevel: "warning",
-    // Node-only code paths in sentinel-ir / web-tree-sitter are never reached
-    // in the browser: native tree-sitter is only used by the sync analyze()
-    // fallback, and fs/module only when web-tree-sitter runs under Node.
+    // fs/module are used only when web-tree-sitter runs under Node.
     alias: {
         path: path.join(root, "scripts", "shims", "path.js"),
-        "tree-sitter": empty,
-        "tree-sitter-javascript": empty,
         fs: empty,
         "fs/promises": empty,
         module: empty
