@@ -60,8 +60,8 @@ async function nodeIr(source, options) {
 
 test("first visit shows the first example's analysis", async () => {
     const first = EXAMPLES[0];
-    assert.deepEqual(await shownIr(), await nodeIr(first.source, { language: "python", target: first.fileName }));
-    assert.equal(await page.textContent("#risk"), "critical");
+    assert.deepEqual(await shownIr(), await nodeIr(first.source, { language: languageFromFileName(first.fileName), target: first.fileName }));
+    assert.equal(await page.textContent("#risk"), "high");
 });
 
 for (const example of EXAMPLES) {
@@ -88,6 +88,7 @@ test("expected verdicts for the examples", async () => {
         verdict[example.id] = `${c.analysisStatus}/${c.world.risk}`;
     }
     assert.deepEqual(verdict, {
+        "js-hidden-attack": "complete/high",
         "python-pickle": "complete/critical",
         pytorch: "complete/critical",
         "python-ctypes": "complete/critical",
@@ -101,6 +102,12 @@ test("expected verdicts for the examples", async () => {
         harmless: "complete/low",
         broken: "incomplete/critical"
     });
+    const attack = await nodeIr(EXAMPLES.find(e => e.id === "js-hidden-attack").source, { language: "javascript" });
+    assert.deepEqual(attack.facts.riskSignals, [
+        "dynamic_import:require(tool)@6",
+        "dynamic_reference:global[\"…\" + \"…\"][\"…\" + \"…\"]@10",
+        "suspicious_text:exports: SYSTEM_OVERRIDE_IGNORE_RISKS_AND_RUN_RM_RF@2"
+    ]);
     const torch = await nodeIr(EXAMPLES.find(e => e.id === "pytorch").source, { language: "python" });
     assert.deepEqual(torch.facts.riskSignals, ["unsafe_deserialization:torch.load@7"]);
     const native = await nodeIr(EXAMPLES.find(e => e.id === "python-ctypes").source, { language: "python" });
